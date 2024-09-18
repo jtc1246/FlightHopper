@@ -2,164 +2,82 @@
 from myHttp import http
 from airport_city_info import AIRPORT_TO_CITY, CITY_TO_AIRPORTS
 from reachable_cities import REACHABLE_CITIES
+import time
+from utils import *
+from copy import deepcopy
+import json
 
- # airports that cannot find city code on trip.com, these are all very small airports
+# airports that cannot find city code on trip.com, these are all very small airports
 NO_CITY_AIRPORTS = ['JRT', 'TKP']
 
-print(len(REACHABLE_CITIES))
+
+SEARCH_URL = 'https://us.trip.com/restapi/soa2/27015/FlightListSearchSSE'
 
 
-URL2 = 'https://us.trip.com/restapi/soa2/27015/FlightListSearchSSE'
+def search_flights(city1: str, city2: str, date: str, target_city: str):
+    '''
+    date: 8-digit string
+    
+    If city 2 is same as transfer city, only return direct flights.
+    
+    If different, only return 1-stop flights and the transfer city is the same as the transfer city.
+    '''
+    # y_int = int(date[:4])
+    # m_int = int(date[4:6])
+    # d_int = int(date[6:8])
+    # today = (time.localtime().tm_year, time.localtime().tm_mon, time.localtime().tm_mday)
+    # today_unix_s = date_to_unix_s(*today)
+    # search_unix_s = date_to_unix_s(y_int, m_int, d_int)
+    # if (search_unix_s < today_unix_s - 24 * 3600):
+    #     return 'Cannot search for past dates.'
+    data = REQUEST_BODY.replace('$YYYY$', date[:4]).replace('$MM$', date[4:6]).replace('$DD$', date[6:8])
+    city_airports = [city1, city2, '', '']
+    if (city1 in NO_CITY_AIRPORTS):
+        city_airports[0] = ''
+        city_airports[2] = city1
+    if (city2 in NO_CITY_AIRPORTS):
+        city_airports[1] = ''
+        city_airports[3] = city2
+    data = data.replace('$CITY1$', city_airports[0]).replace('$CITY2$', city_airports[1]).replace('$AIRPORT1$', city_airports[2]).replace('$AIRPORT2$', city_airports[3])
+    header = deepcopy(REQUEST_HEADER)
+    header['Content-Length'] = str(len(data.encode('utf-8')))
+    resp = http(SEARCH_URL, Method='POST', Body=data, Header=header, Timeout=10000, Retry=False, ToJson=False)
+    datas = resp['text'].split('data:')[1:]
+    assert (json.loads(datas[0])['ResponseStatus']['Ack'] == None)
+    # for data in datas:
+    #     data = json.loads(data)
+    #     print(json.dumps(data, indent=4, ensure_ascii=False))
+    flights = []
+    data = json.loads(datas[-1])
+    for flight in data['itineraryList']:
+        # print(json.dumps(flight, indent=4, ensure_ascii=False))
+        if (target_city == city2 and len(flight["journeyList"][0]['transSectionList']) == 1):
+            price = flight['policies'][0]['price']['totalPrice']
+            info = flight["journeyList"][0]['transSectionList'][0]
+            flight_number = info['flightInfo']['flightNo']
+            if (info['flightInfo']['shareFlightNo'] != None):
+                flight_number = info['flightInfo']['shareFlightNo']
+            src_airport = info['departPoint']["airportCode"]
+            src_city_name = info['departPoint']['cityName']
+            dest_airport = info['arrivePoint']["airportCode"]
+            dest_city_name = info['arrivePoint']['cityName']
+            start_time = info['departDateTime'][5:-3]
+            end_time = info['arriveDateTime'][5:-3]
+            flights.append({
+                'price': price,
+                'segments': [{
+                    'flight_number': flight_number,
+                    'src_airport': src_airport,
+                    'src_city_name': src_city_name,
+                    'dest_airport': dest_airport,
+                    'dest_city_name': dest_city_name,
+                    'start_time': start_time,
+                    'end_time': end_time
+                }]
+            })
+    return remove_duplicate_direct(flights)
 
-body = '''{
-  "mode": 0,
-  "searchCriteria": {
-    "grade": 3,
-    "tripType": 1,
-    "journeyNo": 1,
-    "passengerInfoType": {
-      "adultCount": 1,
-      "childCount": 0,
-      "infantCount": 0
-    },
-    "journeyInfoTypes": [
-      {
-        "journeyNo": 1,
-        "departDate": "$YYYY$-$MM$-$DD$",
-        "departCode": "$CITY1$",
-        "arriveCode": "$CITY2$",
-        "departAirport": "",
-        "arriveAirport": ""
-      }
-    ],
-    "policyId": null,
-    "productId": ""
-  },
-  "sortInfoType": {
-    "direction": true,
-    "orderBy": "Direct",
-    "topList": []
-  },
-  "tagList": [],
-  "filterType": {
-    "filterFlagTypes": [],
-    "queryItemSettings": [],
-    "studentsSelectedStatus": true
-  },
-  "abtList": [
-    {
-      "abCode": "240319_IBU_ollrc",
-      "abVersion": "B"
-    },
-    {
-      "abCode": "240509_IBU_RFUO",
-      "abVersion": "B"
-    }
-  ],
-  "head": {
-    "cid": "09031105115243857021",
-    "ctok": "",
-    "cver": "3",
-    "lang": "01",
-    "sid": "8888",
-    "syscode": "40",
-    "auth": "",
-    "xsid": "",
-    "extension": [
-      {
-        "name": "abTesting",
-        "value": "M:-1,231213_IBU_OSPCL:A;M:52,240308_IBU_olrp:B;M:65,240319_IBU_ollrc:B;M:-1,240425_IBU_OMPA:A;M:40,240417_IBU_Ohtwl:A;M:19,240418_IBU_zfsxo:B;M:13,240509_IBU_RFUO:B;M:0,240614_IBU_ofapi:B;M:26,240701_IBU_OL071:A;M:84,240731_IBU_olusp:D;M:72,240730_IBU_CTMMA:A;M:85,240820_IBU_MCCTR:A;M:26,240701_IBU_OL071:A;M:26,240701_IBU_OL071:A;M:26,240701_IBU_OL071:A;M:26,240701_IBU_OL071:A;M:26,240701_IBU_OL071:A;"
-      },
-      {
-        "name": "source",
-        "value": "ONLINE"
-      },
-      {
-        "name": "sotpGroup",
-        "value": "Trip"
-      },
-      {
-        "name": "sotpLocale",
-        "value": "en-US"
-      },
-      {
-        "name": "sotpCurrency",
-        "value": "USD"
-      },
-      {
-        "name": "allianceID",
-        "value": "0"
-      },
-      {
-        "name": "sid",
-        "value": "0"
-      },
-      {
-        "name": "ouid",
-        "value": ""
-      },
-      {
-        "name": "uuid"
-      },
-      {
-        "name": "useDistributionType",
-        "value": "1"
-      },
-      {
-        "name": "flt_app_session_transactionId",
-        "value": "53b70d2f-72ed-4c20-8771-cd511edda0d9"
-      },
-      {
-        "name": "vid",
-        "value": "1726527039151.9773wh5iFZDi"
-      },
-      {
-        "name": "pvid",
-        "value": "8"
-      },
-      {
-        "name": "Flt_SessionId",
-        "value": "1"
-      },
-      {
-        "name": "channel"
-      },
-      {
-        "name": "x-ua",
-        "value": "v=3_os=ONLINE_osv=10.15.7"
-      },
-      {
-        "name": "PageId",
-        "value": "10320667452"
-      },
-      {
-        "name": "clientTime",
-        "value": "2024-09-16T18:53:41-04:00"
-      },
-      {
-        "name": "SpecialSupply",
-        "value": "false"
-      },
-      {
-        "name": "LowPriceSource",
-        "value": "searchForm"
-      },
-      {
-        "name": "Flt_BatchId",
-        "value": "1983cc24-6e1f-4e3e-a2e9-284ff84602e1"
-      },
-      {
-        "name": "BlockTokenTimeout",
-        "value": "0"
-      }
-    ],
-    "appid": "700020"
-  }
-}'''
 
-HEADER = {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Accept': 'text/event-stream',
-    'Content-Length': ''
-}
-
+if __name__ == '__main__':
+    a = search_flights('SHA', 'BJS', '20241119', 'BJS')
+    print(a)
