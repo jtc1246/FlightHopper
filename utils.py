@@ -1,7 +1,9 @@
 import datetime
 import calendar
+import math
 
-__all__ = ['date_to_unix_s', 'REQUEST_BODY', 'REQUEST_HEADER', 'remove_duplicate_direct']
+__all__ = ['date_to_unix_s', 'REQUEST_BODY', 'REQUEST_HEADER', 'remove_duplicate_direct',
+           'format_direct_flight', 'format_transfer_flight']
 
 
 def date_to_unix_s(year, month, day):
@@ -185,3 +187,61 @@ def remove_duplicate_direct(flights):
     for _, v in lowest_index.items():
         new_flights.append(flights[v])
     return new_flights
+
+
+def pad_space(s: str, length: int) -> str:
+    end = (length - len(s)) // 2
+    front = length - len(s) - end
+    return ' ' * front + s + ' ' * end
+
+
+def format_direct_flight(flight) -> str:
+    price = flight['price']
+    flight = flight['segments'][0]
+    flight_number = flight['flight_number']
+    src_airport = flight['src_airport']
+    src_city_name = flight['src_city_name']
+    dest_airport = flight['dest_airport']
+    dest_city_name = flight['dest_city_name']
+    start_time = flight['start_time']
+    end_time = flight['end_time']
+    flight_number = pad_space(flight_number, 6)
+    src_display = f'{src_city_name} ({src_airport})'
+    dest_display = f'{dest_city_name} ({dest_airport})'
+    src_display = src_display[:20]
+    dest_display = dest_display[:20]
+    src_display = pad_space(src_display, 20)
+    dest_display = pad_space(dest_display, 20)
+    price = f'{price} USD'
+    price = price[:8]
+    price = pad_space(price, 8)
+    return f'| {flight_number} | {src_display} -> {dest_display} | {start_time} ~ {end_time} | {price} |'
+
+
+def format_transfer_flight(flight) -> str:
+    origin_flight = flight
+    price = flight['price']
+    price = f'{price} USD'
+    price = price[:8]
+    price = pad_space(price, 8)
+    flight = flight['segments'][0]
+    flight_number = flight['flight_number']
+    flight_number = pad_space(flight_number, 6)
+    src_airport = flight['src_airport']
+    src_city_name = flight['src_city_name']
+    dest_airport = flight['dest_airport']
+    dest_city_name = flight['dest_city_name']
+    start_time = flight['start_time']
+    second_flight = origin_flight['segments'][1]
+    third_airport = second_flight['dest_airport']
+    third_city_name = second_flight['dest_city_name']
+    src_display = f'{src_city_name} ({src_airport})'
+    dest_display = f'{dest_city_name} ({dest_airport})'
+    third_display = f'{third_city_name} ({third_airport})'
+    src_display = src_display[:20]
+    dest_display = dest_display[:20]
+    third_display = third_display[:20]
+    src_display = pad_space(src_display, 20)
+    dest_display = pad_space(dest_display, 20)
+    third_display = pad_space(third_display, 20)
+    return f'| {flight_number} | {start_time} | {src_display} -> {dest_display} -> {third_display} | {price} |'
