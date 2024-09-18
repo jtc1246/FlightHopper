@@ -115,4 +115,3 @@ if __name__ == '__main__':
     print(result)
     with open('./airport_city.json', 'w') as f:
         f.write(result)
-    
