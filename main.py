@@ -36,7 +36,7 @@ def search_flights(city1: str, city2: str, date: str, target_city: str) -> list:
     data = data.replace('$CITY1$', city_airports[0]).replace('$CITY2$', city_airports[1]).replace('$AIRPORT1$', city_airports[2]).replace('$AIRPORT2$', city_airports[3])
     header = deepcopy(REQUEST_HEADER)
     header['Content-Length'] = str(len(data.encode('utf-8')))
-    resp = http(SEARCH_URL, Method='POST', Body=data, Header=header, Timeout=10000, Retry=False, ToJson=False)
+    resp = http(SEARCH_URL, Method='POST', Body=data, Header=header, Timeout=30000, Retry=False, ToJson=False)
     datas = resp['text'].split('data:')[1:]
     assert (resp['code'] == 200)
     assert (json.loads(datas[0])['ResponseStatus']['Ack'] == None)
@@ -199,7 +199,7 @@ def search_transfer_flights(src: str, dest: str, date: str) -> None:
     print(f'Searching {waiting_num} transfer cities ...')
     for i in range(0, waiting_num):
         start_new_thread(search_flights_wrapper, (src_city, transfer_cities[i], date, dest_city, queue))
-        time.sleep(0.5)
+        time.sleep(0.3)
     while (queue.qsize() < waiting_num):
         time.sleep(0.1)
     transfer_flights = []
@@ -229,4 +229,4 @@ def search_transfer_flights(src: str, dest: str, date: str) -> None:
 
 
 if __name__ == '__main__':
-    search_transfer_flights('LAX', 'DTW', '20241119')
+    search_transfer_flights('DTW', 'SFO', '20241119')
