@@ -43,6 +43,7 @@ def get_airport_city(airport_code: str) -> Tuple[str, str]:
         if ((r['dataType'] == 5 and r['airportCode'] == airport_code)):
             assert (len(r['cityCode']) == 3 or r['cityCode'] == '')
             if (r['cityCode'] == ''):
+                print(f'Warning: {airport_code} has no city code, using airport code instead')
                 r['cityCode'] = airport_code
             return (r['cityCode'], r['cityEName'])
     for r in result:
@@ -53,6 +54,7 @@ def get_airport_city(airport_code: str) -> Tuple[str, str]:
             if (child['dataType'] == 5 and child['airportCode'] == airport_code):
                 assert (len(child['cityCode']) == 3 or child['cityCode'] == '')
                 if (child['cityCode'] == ''):
+                    print(f'Warning: {airport_code} has no city code, using airport code instead')
                     child['cityCode'] = airport_code
                 return (child['cityCode'], child['cityEName'])
     return False

@@ -1,9 +1,13 @@
 # from airports import ALL_AIRPORTS
 from myHttp import http
+from airport_city_info import AIRPORT_TO_CITY, CITY_TO_AIRPORTS
+from reachable_cities import REACHABLE_CITIES
 
-# print(len(ALL_AIRPORTS))
+ # airports that cannot find city code on trip.com, these are all very small airports
+NO_CITY_AIRPORTS = ['JRT', 'TKP']
 
-URL = 'https://api.flightradar24.com/common/v1/airport.json?code=$airport$&plugin%5B%5D=schedule&plugin-setting%5Bschedule%5D%5Bmode%5D=departures&plugin-setting%5Bschedule%5D%5Btimestamp%5D=$time$&limit=100&page=$page$'
+print(len(REACHABLE_CITIES))
+
 
 URL2 = 'https://us.trip.com/restapi/soa2/27015/FlightListSearchSSE'
 
