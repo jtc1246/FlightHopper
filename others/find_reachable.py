@@ -6,6 +6,7 @@ from typing import Tuple, Union, Literal
 from _thread import start_new_thread
 import traceback
 from threading import Lock
+import json
 
 
 FLIGHT_RADAR_URL = 'https://api.flightradar24.com/common/v1/airport.json?code=$airport$&plugin%5B%5D=schedule&plugin-setting%5Bschedule%5D%5Bmode%5D=departures&plugin-setting%5Bschedule%5D%5Btimestamp%5D=$time$&limit=100&page=$page$'
@@ -48,6 +49,8 @@ def one_request(url: str) -> Tuple[bool, list[str], int]:
     results = results['data']
     destinations = []
     for flight in results:
+        if (flight['flight']['airport']['destination'] == None):
+            continue
         destinations.append(flight['flight']['airport']['destination']['code']['iata'])
     return True, destinations, page_num
 
@@ -170,6 +173,71 @@ def find_city_reachable_cities(city_code: str) -> Union[Literal[False], list[str
     return list(set(cities))
 
 
+def save_result(queue: Queue):
+    data = {}
+    while True:
+        result = queue.get(block=True)
+        if (result == 'Finished'):
+            print(f'Total: {len(data)} cities.')
+            with open('reachable_cities.json', 'w') as f:
+                f.write(json.dumps(data, ensure_ascii=False))
+            return
+        data[result[0]] = result[1]
+        if (len(data) % 100 == 0):
+            with open('reachable_cities.json', 'w') as f:
+                f.write(json.dumps(data, ensure_ascii=False))
+
+
+def fetch_thread(queue: Queue, success_queue: Queue, fail_queue: Queue):
+    num = len(CITY_TO_AIRPORTS)
+    for i in range(0, num):
+        city_code = list(CITY_TO_AIRPORTS.keys())[i]
+        result = find_city_reachable_cities(city_code)
+        if (result == False):
+            print(f'Failed to fetch city {city_code}.')
+            fail_queue.put('')
+        else:
+            success_queue.put('')
+        queue.put((city_code, result))
+    print("Finished in fetch thread.")
+    queue.put('Finished')
+
+
 if __name__ == '__main__':
-    a = find_city_reachable_cities('TYO')
-    print(a)
+    # fix for some failed results
+    try:
+        f = open('reachable_cities.json', 'r')
+        data = json.loads(f.read())
+        f.close()
+        file_exist = True
+    except:
+        file_exist = False
+        pass
+    if (file_exist):
+        print(len(data), len(CITY_TO_AIRPORTS))
+        num = len(data)
+        failed_num = 0
+        for k, v in data.items():
+            if (v == False):
+                failed_num += 1
+        print(f'Failed: {failed_num}')
+        for k, v in data.items():
+            if (v == False):
+                result = find_city_reachable_cities(k)
+                if (result == False):
+                    print(f'{k} still failed.')
+                else:
+                    print(f'{k} success.')
+                data[k] = result
+        with open('reachable_cities.json', 'w') as f:
+            f.write(json.dumps(data, ensure_ascii=False))
+        __import__('os')._exit(0)
+    
+    queue = Queue()
+    success_queue = Queue()
+    fail_queue = Queue()
+    start_new_thread(fetch_thread, (queue, success_queue, fail_queue))
+    start_new_thread(save_result, (queue,))
+    while True:
+        sleep(1)
+        print(f'Success: {success_queue.qsize()}, Fail: {fail_queue.qsize()}, Total: {success_queue.qsize() + fail_queue.qsize()}')
