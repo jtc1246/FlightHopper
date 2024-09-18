@@ -16,11 +16,11 @@ SEARCH_URL = 'https://us.trip.com/restapi/soa2/27015/FlightListSearchSSE'
 
 def search_flights(city1: str, city2: str, date: str, target_city: str):
     '''
-    date: 8-digit string
-    
+    date: 8-digit string, all city should 3-letter city code, NOT airport code.
+
     If city 2 is same as transfer city, only return direct flights.
-    
-    If different, only return 1-stop flights and the transfer city is the same as the transfer city.
+
+    If different, only return 1-stop flights and the transfer city is the same as the target city.
     '''
     # y_int = int(date[:4])
     # m_int = int(date[4:6])
@@ -75,9 +75,62 @@ def search_flights(city1: str, city2: str, date: str, target_city: str):
                     'end_time': end_time
                 }]
             })
-    return remove_duplicate_direct(flights)
+        if (target_city == city2):
+            continue
+        if (len(flight["journeyList"][0]['transSectionList']) != 2):
+            continue
+        middle_city_code = flight["journeyList"][0]['transSectionList'][0]['arrivePoint']['cityCode']
+        if (middle_city_code != target_city):
+            continue
+        price = flight['policies'][0]['price']['totalPrice']
+        this_flight = {
+            'price': price,
+            'segments': []
+        }
+        info = flight["journeyList"][0]['transSectionList'][0]
+        flight_number = info['flightInfo']['flightNo']
+        if (info['flightInfo']['shareFlightNo'] != None):
+            flight_number = info['flightInfo']['shareFlightNo']
+        src_airport = info['departPoint']["airportCode"]
+        src_city_name = info['departPoint']['cityName']
+        dest_airport = info['arrivePoint']["airportCode"]
+        dest_city_name = info['arrivePoint']['cityName']
+        start_time = info['departDateTime'][5:-3]
+        end_time = info['arriveDateTime'][5:-3]
+        this_flight['segments'].append({
+            'flight_number': flight_number,
+            'src_airport': src_airport,
+            'src_city_name': src_city_name,
+            'dest_airport': dest_airport,
+            'dest_city_name': dest_city_name,
+            'start_time': start_time,
+            'end_time': end_time
+        })
+        info = flight["journeyList"][0]['transSectionList'][1]
+        flight_number = info['flightInfo']['flightNo']
+        if (info['flightInfo']['shareFlightNo'] != None):
+            flight_number = info['flightInfo']['shareFlightNo']
+        src_airport = info['departPoint']["airportCode"]
+        src_city_name = info['departPoint']['cityName']
+        dest_airport = info['arrivePoint']["airportCode"]
+        dest_city_name = info['arrivePoint']['cityName']
+        start_time = info['departDateTime'][5:-3]
+        end_time = info['arriveDateTime'][5:-3]
+        this_flight['segments'].append({
+            'flight_number': flight_number,
+            'src_airport': src_airport,
+            'src_city_name': src_city_name,
+            'dest_airport': dest_airport,
+            'dest_city_name': dest_city_name,
+            'start_time': start_time,
+            'end_time': end_time
+        })
+        flights.append(this_flight)
+    if (target_city == city2):
+        return remove_duplicate_direct(flights)
+    return flights
 
 
 if __name__ == '__main__':
-    a = search_flights('SHA', 'BJS', '20241119', 'BJS')
+    a = search_flights('LAX', 'CTU', '20240917', 'SHA')
     print(a)
