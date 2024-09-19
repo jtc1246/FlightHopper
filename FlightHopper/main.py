@@ -44,6 +44,8 @@ def search_flights(city1: str, city2: str, date: str, target_city: str) -> list:
     data = json.loads(datas[-1])
     for flight in data['itineraryList']:
         if (target_city == city2 and len(flight["journeyList"][0]['transSectionList']) == 1):
+            if (flight['policies'][0]['price'] == None):
+                continue
             price = flight['policies'][0]['price']['totalPrice']
             info = flight["journeyList"][0]['transSectionList'][0]
             flight_number = info['flightInfo']['flightNo']
@@ -73,6 +75,8 @@ def search_flights(city1: str, city2: str, date: str, target_city: str) -> list:
             continue
         middle_city_code = flight["journeyList"][0]['transSectionList'][0]['arrivePoint']['cityCode']
         if (middle_city_code != target_city):
+            continue
+        if (flight['policies'][0]['price'] == None):
             continue
         price = flight['policies'][0]['price']['totalPrice']
         this_flight = {
@@ -150,6 +154,8 @@ def search_transfer_flights(src: str, dest: str, date: str) -> None:
 
     Will not return anything, will print the results.
     '''
+    src = src.upper()
+    dest = dest.upper()
     if (len(date) != 8):
         raise Exception('Date should be 8-digit string.')
     y_int = int(date[:4])
