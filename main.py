@@ -186,6 +186,7 @@ def search_transfer_flights(src: str, dest: str, date: str) -> None:
     print(f'Searching for flights from {src_city_name} to {dest_city_name}.')
     print(f'Searching direct flights ...')
     direct_flights = search_flights(src_city, dest_city, date, dest_city)
+    direct_flights = order_direct_results(direct_flights)
     if (len(direct_flights) == 0):
         print('Error: No direct flights found. You cannot search for transfer flights.\nStop.')
         return
@@ -221,6 +222,7 @@ def search_transfer_flights(src: str, dest: str, date: str) -> None:
     if (len(transfer_flights) == 0):
         print('No cheaper transfer flights found.')
         return
+    transfer_flights = order_transfer_results(transfer_flights)
     print('Found following cheaper transfer flights: ')
     print('+--------+-------------+----------------------------------------------------------------------+----------+')
     for f in transfer_flights:
@@ -229,4 +231,4 @@ def search_transfer_flights(src: str, dest: str, date: str) -> None:
 
 
 if __name__ == '__main__':
-    search_transfer_flights('DTW', 'SFO', '20241119')
+    search_transfer_flights('DTW', 'LAX', '20241119')

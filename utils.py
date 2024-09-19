@@ -3,7 +3,7 @@ import calendar
 import math
 
 __all__ = ['date_to_unix_s', 'REQUEST_BODY', 'REQUEST_HEADER', 'remove_duplicate_direct',
-           'format_direct_flight', 'format_transfer_flight']
+           'format_direct_flight', 'format_transfer_flight', 'order_direct_results', 'order_transfer_results']
 
 
 def date_to_unix_s(year, month, day):
@@ -245,3 +245,11 @@ def format_transfer_flight(flight) -> str:
     dest_display = pad_space(dest_display, 20)
     third_display = pad_space(third_display, 20)
     return f'| {flight_number} | {start_time} | {src_display} -> {dest_display} -> {third_display} | {price} |'
+
+
+def order_direct_results(flights: list) -> list:
+    return sorted(flights, key=lambda x: x['segments'][0]['start_time'])
+
+
+def order_transfer_results(flights: list) -> list:
+    return sorted(flights, key=lambda x: x['segments'][0]['start_time'] + str(x['price'] + 100000))
