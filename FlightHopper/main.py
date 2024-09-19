@@ -1,9 +1,14 @@
 # from airports import ALL_AIRPORTS
 from myHttp import http
-from .airport_city_info import AIRPORT_TO_CITY, CITY_TO_AIRPORTS
-from .reachable_cities import REACHABLE_CITIES
+if __name__ != '__main__':
+    from .airport_city_info import AIRPORT_TO_CITY, CITY_TO_AIRPORTS
+    from .reachable_cities import REACHABLE_CITIES
+    from .utils import *
+else:
+    from airport_city_info import AIRPORT_TO_CITY, CITY_TO_AIRPORTS
+    from reachable_cities import REACHABLE_CITIES
+    from utils import *
 import time
-from .utils import *
 from copy import deepcopy
 import json
 from typing import Union
@@ -34,6 +39,7 @@ def search_flights(city1: str, city2: str, date: str, target_city: str) -> list:
         city_airports[1] = ''
         city_airports[3] = city2
     data = data.replace('$CITY1$', city_airports[0]).replace('$CITY2$', city_airports[1]).replace('$AIRPORT1$', city_airports[2]).replace('$AIRPORT2$', city_airports[3])
+    data_backup = data
     header = deepcopy(REQUEST_HEADER)
     header['Content-Length'] = str(len(data.encode('utf-8')))
     resp = http(SEARCH_URL, Method='POST', Body=data, Header=header, Timeout=30000, Retry=False, ToJson=False)
@@ -42,6 +48,14 @@ def search_flights(city1: str, city2: str, date: str, target_city: str) -> list:
     assert (json.loads(datas[0])['ResponseStatus']['Ack'] == None)
     flights = []
     data = json.loads(datas[-1])
+    if (len(data['itineraryList']) == 0):
+        # retry if the response is empty (no flights found), this is because we can not distinguish whether
+        # the request succeeded, it always returns 200, and also could not distinguish in response body.
+        resp = http(SEARCH_URL, Method='POST', Body=data_backup, Header=header, Timeout=30000, Retry=False, ToJson=False)
+        datas = resp['text'].split('data:')[1:]
+        assert (resp['code'] == 200)
+        assert (json.loads(datas[0])['ResponseStatus']['Ack'] == None)
+        data = json.loads(datas[-1])
     for flight in data['itineraryList']:
         if (target_city == city2 and len(flight["journeyList"][0]['transSectionList']) == 1):
             if (flight['policies'][0]['price'] == None):
@@ -206,7 +220,7 @@ def search_transfer_flights(src: str, dest: str, date: str) -> None:
     print(f'Searching {waiting_num} transfer cities ...')
     for i in range(0, waiting_num):
         start_new_thread(search_flights_wrapper, (src_city, transfer_cities[i], date, dest_city, queue))
-        time.sleep(0.3)
+        time.sleep(0.01)
     while (queue.qsize() < waiting_num):
         time.sleep(0.1)
     transfer_flights = []
