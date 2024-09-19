@@ -1,9 +1,9 @@
 # from airports import ALL_AIRPORTS
 from myHttp import http
-from airport_city_info import AIRPORT_TO_CITY, CITY_TO_AIRPORTS
-from reachable_cities import REACHABLE_CITIES
+from .airport_city_info import AIRPORT_TO_CITY, CITY_TO_AIRPORTS
+from .reachable_cities import REACHABLE_CITIES
 import time
-from utils import *
+from .utils import *
 from copy import deepcopy
 import json
 from typing import Union
@@ -228,7 +228,3 @@ def search_transfer_flights(src: str, dest: str, date: str) -> None:
     for f in transfer_flights:
         print(format_transfer_flight(f))
         print('+--------+-------------+----------------------------------------------------------------------+----------+')
-
-
-if __name__ == '__main__':
-    search_transfer_flights('DTW', 'LAX', '20241119')
